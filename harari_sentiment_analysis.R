@@ -72,4 +72,24 @@ tail(sapiens_words)
 
 head(deusex_words)
 tail(deusex_words)
+
+get_sentiments("bing") %>% head
+get_sentiments("nrc") %>% head
+get_sentiments("afinn") %>% head
+
+sapiens_sent <- sapiens_words %>% 
+  left_join(get_sentiments("bing"), by = "word") %>% 
+  left_join(get_sentiments("afinn"), by = "word")
+
+deusex_sent <- deusex_words %>% 
+  left_join(get_sentiments("bing"), by = "word") %>% 
+  left_join(get_sentiments("afinn"), by = "word")
+
+head(sapiens_sent)
+tail(sapiens_sent)
+
+head(deusex_sent)
+tail(deusex_sent)
+summary(deusex_sent)  
+str(deusex_sent)  
   
