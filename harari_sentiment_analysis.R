@@ -3,7 +3,7 @@ rm(list=ls())
 ls()
 
 #install.packages("pacman")
-pacman::p_load(XML, dplyr, stringr, rvest, audio, xml2, purrr, tidytext)
+pacman::p_load(XML, dplyr, tidyr, stringr, rvest, audio, xml2, purrr, tidytext, ggplot2)
 update.packages()
 
 
@@ -79,17 +79,100 @@ get_sentiments("afinn") %>% head
 
 sapiens_sent <- sapiens_words %>% 
   left_join(get_sentiments("bing"), by = "word") %>% 
-  left_join(get_sentiments("afinn"), by = "word")
+  left_join(get_sentiments("afinn"), by = "word") %>% 
+  mutate(book = "Sapiens")
 
 deusex_sent <- deusex_words %>% 
   left_join(get_sentiments("bing"), by = "word") %>% 
-  left_join(get_sentiments("afinn"), by = "word")
+  left_join(get_sentiments("afinn"), by = "word") %>% 
+  mutate(book = "Deus Ex")
 
-head(sapiens_sent)
-tail(sapiens_sent)
+all_sent = bind_rows(sapiens_sent, deusex_sent)
 
-head(deusex_sent)
-tail(deusex_sent)
-summary(deusex_sent)  
-str(deusex_sent)  
+
+str(all_sent)
+summary(all_sent)
+
+### # how many words for analysis ###
+# sapiens
+sum(is.na(sapiens_sent$sentiment))/nrow(sapiens_sent)
+nrow(sapiens_sent)-sum(is.na(sapiens_sent$sentiment))
+
+
+# deus_ex 
+sum(is.na(deusex_sent$sentiment))/nrow(deusex_sent)
+nrow(deusex_sent)-sum(is.na(deusex_sent$sentiment))
+
+str(deusex_sent)
+str(sapiens_sent)
+
+
+
+### number of stars per review 
+
+round(table(sapiens_sent$stars)/sum(table(sapiens_sent$stars)), 2)
+round(table(deusex_sent$stars)/sum(table(deusex_sent$stars)), 2)
+
+all_sent %>%
+  group_by(book, stars) %>%
+  summarize(n_stars = n()) %>%
+  group_by(book) %>% 
+  mutate(n_reviews = sum(n_stars),
+         percent = paste0(round(n_stars*100/n_reviews, 0), "%")) %>% 
+  select(-c(n_stars, n_reviews)) %>% 
+  spread(stars, percent)
+
+### average sentiment score 
+
+all_sent %>% 
+  group_by(book) %>% 
+  summarise(mean = mean(score, na.rm = TRUE), median = median(score, na.rm  = TRUE)) 
+
+all_sent %>% 
+  ggplot(aes(x= book, y = score, color = book)) +
+  geom_boxplot(outlier.shape=NA)  #avoid plotting outliers twice
+  
+  
+
+### sentiment score spread 
+
+
+all_sent %>% 
+  ggplot(aes(x= book, y = score, color = book)) +
+  geom_boxplot(outlier.shape=NA) + #avoid plotting outliers twice
+  geom_jitter(position=position_jitter(width=.1, height=0))
+
+### average sentiment score per star 
+
+all_sent %>% 
+  ggplot(aes(as.factor(stars), score)) +
+  geom_boxplot(aes(fill = book)) #+
+  #facet_wrap( ~ stars)#, scales="free")
+
+### ratio of positive / negative words per review
+
+all_sent %>%
+  filter(!is.na(sentiment)) %>%
+  group_by(book, sentiment) %>% 
+  summarise(n = n() ) %>%
+  group_by(book) %>%
+  mutate(sum = sum(n),
+         percent = paste0(round(n*100/sum, 0), "%")) %>%
+  select(-c(n, sum)) %>%
+  spread(sentiment, percent)
+  
+### ratio of positive / negative words per star per review
+
+all_sent %>% 
+  filter(!is.na(sentiment)) %>%
+  group_by(book, stars, sentiment) %>%
+  summarise(n = n()) %>%
+  group_by(book, stars) %>%
+  mutate(sum = sum(n), 
+         percent = paste0(round(n*100/sum, 0), "%"),
+         percent2 = round(n/sum, 3)) %>% 
+  select(-c(n, sum, percent)) %>%
+  spread(sentiment, percent2) %>%
+  ggplot(aes(x = stars, y = positive, fill = book)) +
+    geom_bar(stat = "identity", position = "identity", alpha = 0.6)
   
