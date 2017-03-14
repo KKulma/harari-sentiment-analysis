@@ -4,7 +4,7 @@ ls()
 
 #install.packages("pacman")
 pacman::p_load(XML, dplyr, tidyr, stringr, rvest, audio, xml2, purrr, tidytext, ggplot2)
-update.packages()
+#update.packages()
 
 
 sapiens_code = "1846558239"
@@ -51,7 +51,7 @@ deusex_reviews$comments <- gsub("\\.", "\\. ", deusex_reviews$comments)
 
 ### sentiment analysis ####
 
-tokens_function <- function(df){
+words_function <- function(df){
   df_words <- df %>% 
   select(comments, format, stars, helpful) %>% 
   unnest_tokens(word, comments)
@@ -64,8 +64,8 @@ tokens_function <- function(df){
   df_words
 }
 
-sapiens_words <- tokens_function(sapiens_reviews)
-deusex_words <- tokens_function(deusex_reviews)
+sapiens_words <- words_function(sapiens_reviews)
+deusex_words <- words_function(deusex_reviews)
 
 head(sapiens_words)
 tail(sapiens_words)
@@ -77,21 +77,21 @@ get_sentiments("bing") %>% head
 get_sentiments("nrc") %>% head
 get_sentiments("afinn") %>% head
 
-sapiens_sent <- sapiens_words %>% 
+sapiens_words <- sapiens_words %>% 
   left_join(get_sentiments("bing"), by = "word") %>% 
   left_join(get_sentiments("afinn"), by = "word") %>% 
   mutate(book = "Sapiens")
 
-deusex_sent <- deusex_words %>% 
+deusex_words <- deusex_words %>% 
   left_join(get_sentiments("bing"), by = "word") %>% 
   left_join(get_sentiments("afinn"), by = "word") %>% 
   mutate(book = "Deus Ex")
 
-all_sent = bind_rows(sapiens_sent, deusex_sent)
+all_words = bind_rows(sapiens_words, deusex_words)
 
 
-str(all_sent)
-summary(all_sent)
+str(all_words)
+summary(all_words)
 
 ### # how many words for analysis ###
 # sapiens
@@ -113,7 +113,7 @@ str(sapiens_sent)
 round(table(sapiens_sent$stars)/sum(table(sapiens_sent$stars)), 2)
 round(table(deusex_sent$stars)/sum(table(deusex_sent$stars)), 2)
 
-all_sent %>%
+all_words %>%
   group_by(book, stars) %>%
   summarize(n_stars = n()) %>%
   group_by(book) %>% 
@@ -124,11 +124,11 @@ all_sent %>%
 
 ### average sentiment score 
 
-all_sent %>% 
+all_words %>% 
   group_by(book) %>% 
   summarise(mean = mean(score, na.rm = TRUE), median = median(score, na.rm  = TRUE)) 
 
-all_sent %>% 
+all_words %>% 
   ggplot(aes(x= book, y = score, color = book)) +
   geom_boxplot(outlier.shape=NA)  #avoid plotting outliers twice
   
@@ -137,21 +137,21 @@ all_sent %>%
 ### sentiment score spread 
 
 
-all_sent %>% 
+all_words %>% 
   ggplot(aes(x= book, y = score, color = book)) +
   geom_boxplot(outlier.shape=NA) + #avoid plotting outliers twice
   geom_jitter(position=position_jitter(width=.1, height=0))
 
 ### average sentiment score per star 
 
-all_sent %>% 
+all_words %>% 
   ggplot(aes(as.factor(stars), score)) +
   geom_boxplot(aes(fill = book)) #+
   #facet_wrap( ~ stars)#, scales="free")
 
 ### ratio of positive / negative words per review
 
-all_sent %>%
+all_words %>%
   filter(!is.na(sentiment)) %>%
   group_by(book, sentiment) %>% 
   summarise(n = n() ) %>%
@@ -163,7 +163,7 @@ all_sent %>%
   
 ### ratio of positive / negative words per star per review
 
-all_sent %>% 
+all_words %>% 
   filter(!is.na(sentiment)) %>%
   group_by(book, stars, sentiment) %>%
   summarise(n = n()) %>%
@@ -175,4 +175,39 @@ all_sent %>%
   spread(sentiment, percent2) %>%
   ggplot(aes(x = stars, y = positive, fill = book)) +
     geom_bar(stat = "identity", position = "identity", alpha = 0.6)
+
+
+#### Rsentiment and sentences ####
+#install.packages("RSentiment")
+library(RSentiment)
+
+calculate_score(c("This is good","This is bad"))
+
+sentence_function <- function(df){
+  df_sentence <- df %>% 
+    select(comments, format, stars, helpful) %>% 
+    unnest_tokens(sentence, comments, token = "sentences")
+  
+  df_sentence
+}
+
+sapiens_sentence <- sentence_function(sapiens_reviews)
+deusex_sentence <- sentence_function(deusex_reviews)
+
+str(deusex_sentence)
+str(sapiens_sentence)
+head(sapiens_sentence)
+
+all_sentence <-bind_rows(sapiens_sentence, deusex_sentence)
+
+
+head(all_sentence)
+
+calculate_score("I don't normally write reviews but feel I must as this book was so bad.")
+
+all_sentence <- all_sentence %>% 
+  mutate(sentence_score <- calculate_score(sentence))
+
+sessionInfo()
+  
   
