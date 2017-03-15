@@ -178,7 +178,7 @@ all_words %>%
 
 
 #### Rsentiment and sentences ####
-#install.packages("RSentiment")
+install.packages("RSentiment")
 library(RSentiment)
 
 calculate_score(c("This is good","This is bad"))
