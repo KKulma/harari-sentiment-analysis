@@ -2,7 +2,7 @@
 rm(list=ls())
 ls()
 
-#install.packages("pacman")
+install.packages("pacman")
 pacman::p_load(XML, dplyr, tidyr, stringr, rvest, audio, xml2, purrr, tidytext, ggplot2)
 #update.packages()
 
@@ -178,21 +178,57 @@ all_words %>%
 
 
 #### Rsentiment and sentences ####
+
+
 install.packages("RSentiment")
 library(RSentiment)
 
+### sorting problems out #####
+
+
 calculate_score(c("This is good","This is bad"))
+calculate_score("This is good")
+a <- calculate_score("This is bad")
+?unname()
+unname(a)
+
+str(a)
+rownames(a)
+c <- data.frame(a = a, b = rownames(a))
+calculate_score("I don't normally write reviews but feel I must as this book was so bad.")
+
+df = data.frame(chapter = rep(1:2, each = 3), sentence = rep(c("This is bad", "This is good", "I don't know what this is!"), 2))
+df
+
+df <- df %>% 
+  mutate(sentence_score <- unname(calculate_score(sentence)))
+df
+
+
+
+
+
+#### scoring sentences ####
 
 sentence_function <- function(df){
   df_sentence <- df %>% 
     select(comments, format, stars, helpful) %>% 
-    unnest_tokens(sentence, comments, token = "sentences")
+    unnest_tokens(sentence, comments, token = "sentences") %>%
+    mutate(sentence2 = str_replace_all(sentence, "[^[:alnum:]]", " ")) #removing all special characters
+  
+  df_sentence <- df_sentence  %>%
+    mutate(sentence_score = unname(calculate_score(sentence2))) 
   
   df_sentence
 }
 
-sapiens_sentence <- sentence_function(sapiens_reviews)
-deusex_sentence <- sentence_function(deusex_reviews)
+
+
+# go and get a hot drink while this is running 
+sapiens_sentence <- sentence_function(sapiens_reviews) %>%
+  mutate(book = "Sapiens")
+deusex_sentence <- sentence_function(deusex_reviews) %>%
+  mutate(book = "Deus Ex")
 
 str(deusex_sentence)
 str(sapiens_sentence)
@@ -201,13 +237,39 @@ head(sapiens_sentence)
 all_sentence <-bind_rows(sapiens_sentence, deusex_sentence)
 
 
-head(all_sentence)
+all_sentence %>% 
+  group_by(book) %>%
+  summarize(min = min(sentence_score), max = max(sentence_score), mean = mean(sentence_score),
+            median = median(sentence_score))
 
-calculate_score("I don't normally write reviews but feel I must as this book was so bad.")
+all_sentence %>%
+  filter(sentence_score == -7) %>%
+  as.data.frame() %>% 
+  head()
 
-all_sentence <- all_sentence %>% 
-  mutate(sentence_score <- calculate_score(sentence))
-
-sessionInfo()
+all_sentence %>%
+  filter(sentence_score == 7) %>%
+  as.data.frame() %>% 
+  head()
   
+  
+  filter(sentence_score != 0) %>%
+  filter(book == "Sapiens") %>% as.data.frame()
+  ggplot(aes(book, sentence_score)) +
+  geom_boxplot()
+  
+  
+  ### adding word_count 
+  
+  str(all_sentence)
+  
+  all_sentence <- all_sentence %>%
+    mutate(word_count = str_count(sentence2, "\\S+"),
+           avg_score = round(sentence_score/word_count, 3)) %>%
+    as.data.frame()
+  
+  
+    ggplot(all_sentence, aes(book, avg_score)) +
+    geom_boxplot()
+    
   
