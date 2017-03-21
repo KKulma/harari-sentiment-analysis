@@ -181,7 +181,9 @@ all_words %>%
 #install.packages("RSentiment")
 library(RSentiment)
 
-calculate_score(c("This is good","This is bad"))
+calculate_score("This is good","This is bad")
+
+calculate_score(c("This is good","This is bad", "This is bad", "This is really really really bad", "This is not bad"))
 
 sentence_function <- function(df){
   df_sentence <- df %>% 
