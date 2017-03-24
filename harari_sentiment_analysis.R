@@ -48,7 +48,7 @@ str(deusex_reviews)
 
 sapiens_reviews$comments <- gsub("\\.", "\\. ", sapiens_reviews$comments)
 deusex_reviews$comments <- gsub("\\.", "\\. ", deusex_reviews$comments)
-
+str(deusex_reviews)
 ### sentiment analysis ####
 
 words_function <- function(df){
@@ -177,17 +177,39 @@ all_words %>%
     geom_bar(stat = "identity", position = "identity", alpha = 0.6)
 
 
+
+
+all_words %>% 
+  filter(!is.na(sentiment)) %>%
+  group_by(book, stars, sentiment) %>%
+  summarise(n = n()) %>%
+  group_by(book, stars) %>%
+  mutate(sum = sum(n), 
+         percent = paste0(round(n*100/sum, 0), "%"),
+         percent2 = round(n/sum, 3)) %>% 
+  select(-c(n, sum, percent)) %>%
+  spread(sentiment, percent2) %>%
+  ggplot(aes(x = stars, y = positive, fill = book)) +
+  geom_bar(stat = "identity", position = position_dodge(), colour="black") +
+  scale_y_continuous(labels = scales::percent) +
+  coord_flip() 
+
+
+ggplot(data=dat1, aes(x=time, y=total_bill, fill=sex)) +
+  geom_bar(stat="identity", position=position_dodge(), colour="black") +
+  scale_fill_manual(values=c("#999999", "#E69F00"))
+
+
 #### Rsentiment and sentences ####
 
 
 install.packages("RSentiment")
 library(RSentiment)
 
-<<<<<<< HEAD
 calculate_score("This is good","This is bad")
 
 calculate_score(c("This is good","This is bad", "This is bad", "This is really really really bad", "This is not bad"))
-=======
+
 ### sorting problems out #####
 
 
@@ -213,8 +235,8 @@ df
 
 
 
-#### scoring sentences ####
->>>>>>> 8d4a033393777b85cc7acf69b90cab2953edbf24
+#### scoring sentences with RSentiment ####
+
 
 sentence_function <- function(df){
   df_sentence <- df %>% 
@@ -278,4 +300,22 @@ all_sentence %>%
     ggplot(all_sentence, aes(book, avg_score)) +
     geom_boxplot()
     
-  
+
+    
+#### scoring sentences with sentimentr ####
+    install.packages("devtools")
+    devtools::install_github("trinker/lexicon")
+    devtools::install_github("trinker/sentimentr")
+    
+    sapiens_reviews <- sapiens_reviews %>% 
+      mutate(book = "Sapiens")
+    
+    deusex_reviews <- deusex_reviews %>% 
+      mutate(book = "Deus Ex")
+    
+all_reviews <-bind_rows(sapiens_reviews, deusex_reviews)
+    str(all_reviews)
+    
+out2 <- with(all_reviews, sentiment_by(comments, book))    
+head(out2)    
+plot(out2)  
