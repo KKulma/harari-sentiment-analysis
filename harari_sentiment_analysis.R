@@ -319,3 +319,12 @@ all_reviews <-bind_rows(sapiens_reviews, deusex_reviews)
 out2 <- with(all_reviews, sentiment_by(comments, book))    
 head(out2)    
 plot(out2)  
+
+str(all_reviews)
+
+out3 <- with(all_reviews, sentiment_by(comments, list(book, stars)))
+out4 <- with(all_reviews, sentiment_by(comments, list(book, format)))
+
+plot(out3)
+             
+plot(out4)
